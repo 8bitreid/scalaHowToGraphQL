@@ -15,17 +15,22 @@ object Server extends App {
 
   val PORT = 8080
 
-  implicit val actorSystem = ActorSystem("graphql-server")
-  implicit val materializer = ActorMaterializer()
+  implicit val actorSystem: ActorSystem = ActorSystem("graphql-server")
+  implicit val materializer: ActorMaterializer = ActorMaterializer()
 
   import actorSystem.dispatcher
   import scala.concurrent.duration._
 
   scala.sys.addShutdownHook(() -> shutdown())
 
-  val route: Route = {
-    complete("Hello GrahpQL Scala!!!")
-  }
+  val route: Route =
+    (post & path("graphql")) {
+      entity(as[JsValue]) { requestJson =>
+        GraphQLServer.endpoint(requestJson)
+      }
+    } ~ {
+      getFromResource("graphiql.html")
+    }
 
   Http().bindAndHandle(route, "0.0.0.0", PORT)
   println(s"open a browser with URL: http://localhost:$PORT")
