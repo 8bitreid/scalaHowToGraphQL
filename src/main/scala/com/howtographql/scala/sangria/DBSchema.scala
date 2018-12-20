@@ -1,24 +1,23 @@
 package com.howtographql.scala.sangria
 
+import com.howtographql.scala.sangria.models._
 import slick.jdbc.H2Profile.api._
 
 import scala.concurrent.duration._
 import scala.concurrent.Await
 import scala.language.postfixOps
-import com.howtographql.scala.sangria.models._
-import slick.lifted.ProvenShape
-
 
 object DBSchema {
   class LinksTable(tag: Tag) extends Table[Link](tag, "LINKS"){
 
-    def id: Rep[Int] = column[Int]("ID", O.PrimaryKey, O.AutoInc)
-    def url: Rep[String] = column[String]("URL")
-    def description: Rep[String] = column[String]("DESCRIPTION")
+    def id = column[Int]("ID", O.PrimaryKey, O.AutoInc)
+    def url = column[String]("URL")
+    def description = column[String]("DESCRIPTION")
 
-    def * : ProvenShape[Link] = (id, url, description).mapTo[Link]
+    def * = (id, url, description).mapTo[Link]
 
   }
+
   val Links = TableQuery[LinksTable]
 
   /**
