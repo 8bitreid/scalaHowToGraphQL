@@ -23,19 +23,33 @@ object GraphQLSchema {
       case _ => Left(DateTimeCoerceViolation)
     }
   )
-
+  //Link
   val LinkType = deriveObjectType[Unit, Link](
     ReplaceField("createdAt", Field("createdAt", GraphQLDateTime, resolve = _.value.createdAt))
   )
-
   implicit val linkHasId = HasId[Link, Int](_.id)
-
-  val Id = Argument("id", IntType)
-  val Ids = Argument("ids", ListInputType(IntType))
+  // resolver
   val linksFetcher = Fetcher(
     (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getLinks(ids)
   )
-  val Resolver: DeferredResolver[MyContext] = DeferredResolver.fetchers(linksFetcher)
+  //User
+  val UserType = deriveObjectType[Unit, User]() //ObjectType for user
+  implicit val userHasId = HasId[User, Int](_.id) //HasId type class
+  val usersFetcher = Fetcher(
+    (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getUsers(ids)
+  )
+  //Vote
+  implicit val VoteType = deriveObjectType[Unit, Vote]()
+  implicit val voteHasId = HasId[Vote, Int](_.id)
+  val votesFetcher = Fetcher(
+    (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getVotes(ids)
+  )
+
+
+  val Id = Argument("id", IntType)
+  val Ids = Argument("ids", ListInputType(IntType))
+
+  val Resolver: DeferredResolver[MyContext] = DeferredResolver.fetchers(linksFetcher, usersFetcher, votesFetcher)
 
   // 2
   val QueryType = ObjectType(
@@ -51,6 +65,17 @@ object GraphQLSchema {
         ListType(LinkType),
         arguments = List(Argument("ids", ListInputType(IntType))),
         resolve = c => linksFetcher.deferSeq(c.arg(Ids))
+      ),
+      Field("users",
+        ListType(UserType),
+        arguments = List(Ids),
+        resolve = c => usersFetcher.deferSeq(c.arg(Ids))
+      ),
+      //val Ids = Argument("ids", ListInputType(IntType))
+      Field("votes",
+        ListType(VoteType),
+        arguments = List(Ids),
+        resolve = c => votesFetcher.deferSeq(c.arg(Ids))
       )
     )
   )
