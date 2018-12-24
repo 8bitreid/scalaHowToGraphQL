@@ -7,10 +7,17 @@ import sangria.ast.StringValue
 import sangria.execution.deferred.{DeferredResolver, Fetcher, Relation, RelationIds}
 import sangria.schema._
 import sangria.macros.derive._
+import sangria.marshalling.sprayJson._
+import spray.json.DefaultJsonProtocol._
+import spray.json.RootJsonFormat
 
+/**
+  * GraphQl Schema
+  * Here is the real work of GraphQL
+  */
 object GraphQLSchema {
-
-  implicit val GraphQLDateTime = ScalarType[DateTime](//1
+  // custom defined ScalarType
+  implicit val GraphQLDateTime: ScalarType[DateTime] = ScalarType[DateTime](//1
     "DateTime",//2
     coerceOutput = (dt, _) => dt.toString, //3
     coerceInput = { //4
@@ -23,6 +30,15 @@ object GraphQLSchema {
     }
   )
 
+  implicit val authProviderEmailFormat: RootJsonFormat[AuthProviderEmail] = jsonFormat2(AuthProviderEmail)
+  implicit val authProviderSignupDataFormat: RootJsonFormat[AuthProviderSignupData] = jsonFormat1(AuthProviderSignupData)
+  implicit val AuthProviderEmailInputType: InputObjectType[AuthProviderEmail] = deriveInputObjectType[AuthProviderEmail](
+    InputObjectTypeName("AUTH_PROVIDER_EMAIL")
+  )
+  lazy val AuthProviderSignupDataInputType: InputObjectType[AuthProviderSignupData] = deriveInputObjectType[AuthProviderSignupData]()
+
+  // InterfaceType to define a shared Type.
+  // in our case we have a shared Field("id")
   val IdentifiableType = InterfaceType(
     "Identifiable",
     fields[Unit, Identifiable](
@@ -59,33 +75,49 @@ object GraphQLSchema {
     AddFields(Field("link",  LinkType, resolve = c => linksFetcher.defer(c.value.linkId)))
   )
 
+  /**
+    * Relation's let us connect one node to another
+    * This query lets us find a user and their links
+    * query {
+    *   users(ids: 1) {
+    *     name,
+    *     links{
+    *       url,
+    *       description
+    *     }
+    *   }
+    * }
+    */
+  val linkByUserRel: Relation[Link, Link, Int] = Relation[Link, Int]("byUser", l => Seq(l.postedBy))
+  val voteByLinkRel: Relation[Vote, Vote, Int] = Relation[Vote, Int]("byLink", v => Seq(v.linkId))
+  val voteByUserRel: Relation[Vote, Vote, Int] = Relation[Vote, Int]("byUser", v => Seq(v.userId))
 
-  val linkByUserRel = Relation[Link, Int]("byUser", l => Seq(l.postedBy))
-  val voteByLinkRel = Relation[Vote, Int]("byLink", v => Seq(v.linkId))
-  val voteByUserRel = Relation[Vote, Int]("byUser", v => Seq(v.userId))
-
-  val linksFetcher = Fetcher.rel(
+  // we are using fetchers to navigate our DAO Objects.
+  val linksFetcher: Fetcher[MyContext, Link, Link, Int] = Fetcher.rel(
     (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getLinks(ids),
     (ctx: MyContext, ids: RelationIds[Link]) => ctx.dao.getLinksByUserIds(ids(linkByUserRel))
   )
 
-  val usersFetcher = Fetcher(
+  val usersFetcher: Fetcher[MyContext, User, User, Int] = Fetcher(
     (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getUsers(ids)
   )
 
-  val votesFetcher = Fetcher.rel(
+  val votesFetcher: Fetcher[MyContext, Vote, Vote, Int] = Fetcher.rel(
     (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getVotes(ids),
     (ctx: MyContext, ids: RelationIds[Vote]) => ctx.dao.getVotesByRelationIds(ids)
   )
 
-  val Resolver = DeferredResolver.fetchers(linksFetcher, usersFetcher, votesFetcher)
+  // here is our Resolver.  It is constructed by loading our Fetchers up here.
+  // Note: this is used in our Executor.execute function call
+  val Resolver: DeferredResolver[MyContext] = DeferredResolver.fetchers(linksFetcher, usersFetcher, votesFetcher)
 
-
+  // Arguments for for query arguments.
   val Id = Argument("id", IntType)
   val Ids = Argument("ids", ListInputType(IntType))
 
+  // Actually Expose our QueryType to public here.
   val QueryType = ObjectType(
-    "Query",
+    "Query", // Root object is our Query
     fields[MyContext, Unit](
       Field("allLinks", ListType(LinkType), resolve = c => c.ctx.dao.allLinks),
       Field("link",
@@ -111,5 +143,34 @@ object GraphQLSchema {
     )
   )
 
-  val SchemaDefinition = Schema(QueryType)
+
+  val NameArg = Argument("name", StringType)
+  val AuthProviderArg = Argument("authProvider", AuthProviderSignupDataInputType)
+  val UrlArg = Argument("url", StringType)
+  val DescArg = Argument("description", StringType)
+  val PostedByArg = Argument("postedById", IntType)
+  val LinkIdArg = Argument("linkId", IntType)
+  val UserIdArg = Argument("userId", IntType)
+
+  val Mutation = ObjectType(
+    "Mutation",
+    fields[MyContext, Unit](
+      Field("createUser",
+        UserType,
+        arguments = NameArg :: AuthProviderArg :: Nil,
+        resolve = c => c.ctx.dao.createUser(c.arg(NameArg), c.arg(AuthProviderArg))
+      ),
+      Field("createLink",
+        LinkType,
+        arguments = UrlArg :: DescArg :: PostedByArg :: Nil,
+        resolve = c => c.ctx.dao.createLink(c.arg(UrlArg), c.arg(DescArg), c.arg(PostedByArg))),
+      Field("createVote",
+        VoteType,
+        arguments = LinkIdArg :: UserIdArg :: Nil,
+        resolve = c => c.ctx.dao.createVote(c.arg(LinkIdArg), c.arg(UserIdArg)))
+    )
+  )
+
+  // Finally we define our Schema Definition here.
+  val SchemaDefinition = Schema(QueryType, Some(Mutation))
 }
