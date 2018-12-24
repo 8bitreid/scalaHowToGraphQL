@@ -8,10 +8,12 @@ import sangria.ast.StringValue
 import sangria.execution.deferred.{DeferredResolver, Fetcher}
 import sangria.macros.derive._
 import sangria.schema._
+import sangria.execution.deferred.Relation
+import sangria.execution.deferred.RelationIds
 
 
 object GraphQLSchema {
-  implicit val GraphQLDateTime = ScalarType[DateTime](//1
+  implicit val GraphQLDateTime: ScalarType[DateTime] = ScalarType[DateTime](//1
     "DateTime", //2
     coerceOutput = (dt, _) => dt.toString, //3
     coerceInput = { //4
@@ -30,27 +32,50 @@ object GraphQLSchema {
     )
   )
   //Link
-  val LinkType = deriveObjectType[Unit, Link](
+  lazy val LinkType: ObjectType[Unit, Link] = deriveObjectType[Unit, Link](
     Interfaces(IdentifiableType),
-    ReplaceField("createdAt", Field("createdAt", GraphQLDateTime, resolve = _.value.createdAt))
+    ReplaceField("createdAt", Field("createdAt", GraphQLDateTime, resolve = _.value.createdAt)),
+    ReplaceField("postedBy",
+      Field("postedBy", UserType, resolve = c => usersFetcher.defer(c.value.postedBy))
+    ),
+    AddFields(
+      Field("votes", ListType(VoteType), resolve = c => votesFetcher.deferRelSeq(voteByLinkRel, c.value.id))
+    )
   )
   //User
-  val UserType = deriveObjectType[Unit, User](
-    Interfaces(IdentifiableType)
+  lazy val UserType: ObjectType[Unit, User] = deriveObjectType[Unit, User](
+    Interfaces(IdentifiableType),
+    AddFields(
+      Field("links", ListType(LinkType),
+        resolve = c =>  linksFetcher.deferRelSeq(linkByUserRel, c.value.id)),
+      Field("votes", ListType(VoteType),
+        resolve = c =>  votesFetcher.deferRelSeq(voteByUserRel, c.value.id))
+    )
   )
   //Vote
-  val VoteType = deriveObjectType[Unit, Vote](
-    Interfaces(IdentifiableType)
+  lazy val VoteType: ObjectType[Unit, Vote] = deriveObjectType[Unit, Vote](
+    Interfaces(IdentifiableType),
+    ExcludeFields("userId", "linkId"),
+    AddFields(Field("user",  UserType, resolve = c => usersFetcher.defer(c.value.userId))),
+    AddFields(Field("link",  LinkType, resolve = c => linksFetcher.defer(c.value.linkId)))
   )
 
-  val linksFetcher = Fetcher(
-    (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getLinks(ids)
+  val linkByUserRel: Relation[Link, Link, Int] = Relation[Link, Int]("byUser", l => Seq(l.postedBy))
+
+  val voteByUserRel: Relation[Vote, Vote, Int] = Relation[Vote, Int]("byUser", v=> Seq(v.userId))
+
+  val voteByLinkRel: Relation[Vote, Vote, Int] = Relation[Vote, Int]("byLink", v => Seq(v.linkId))
+
+  val linksFetcher: Fetcher[MyContext, Link, Link, Int] = Fetcher.rel(
+    (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getLinks(ids),
+    (ctx: MyContext, ids: RelationIds[Link]) => ctx.dao.getLinksByUserIds(ids(linkByUserRel))
   )
   val usersFetcher = Fetcher(
     (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getUsers(ids)
   )
-  val votesFetcher = Fetcher(
-    (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getVotes(ids)
+  val votesFetcher: Fetcher[MyContext, Vote, Vote, Int] = Fetcher.rel(
+    (ctx: MyContext, ids: Seq[Int]) => ctx.dao.getVotes(ids),
+    (ctx: MyContext, ids: RelationIds[Vote]) => ctx.dao.getVotesByRelationIds(ids)
   )
 
   val Resolver: DeferredResolver[MyContext] = DeferredResolver.fetchers(linksFetcher, usersFetcher, votesFetcher)
