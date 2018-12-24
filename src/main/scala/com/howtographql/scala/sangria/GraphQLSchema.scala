@@ -1,13 +1,13 @@
 package com.howtographql.scala.sangria
 
 import akka.http.scaladsl.model.DateTime
+import com.howtographql.scala.sangria.models._
 import sangria.schema.{ListType, ObjectType}
-import models._
 // #
-import sangria.schema._
-import sangria.macros.derive._
-import sangria.execution.deferred.{DeferredResolver, Fetcher, HasId}
 import sangria.ast.StringValue
+import sangria.execution.deferred.{DeferredResolver, Fetcher}
+import sangria.macros.derive._
+import sangria.schema._
 
 
 object GraphQLSchema {
