@@ -13,13 +13,12 @@ import scala.concurrent.Await
 import scala.language.postfixOps
 
 object DBSchema {
+  implicit val dateTimeColumnType = MappedColumnType.base[DateTime, Timestamp](
+    dt => new Timestamp(dt.clicks),
+    ts => DateTime(ts.getTime)
+  )
 
   class LinksTable(tag: Tag) extends Table[Link](tag, "LINKS") {
-    implicit val dateTimeColumnType: JdbcType[DateTime] with BaseTypedType[DateTime] =
-      MappedColumnType.base[DateTime, Timestamp](
-        dt => new Timestamp(dt.clicks),
-        ts => DateTime(ts.getTime)
-      )
 
     def id = column[Int]("ID", O.PrimaryKey, O.AutoInc)
 
@@ -33,12 +32,7 @@ object DBSchema {
 
   }
 
-  class UserTable(tag: Tag) extends Table[User](tag, "USERS") {
-    implicit val dateTimeColumnType: JdbcType[DateTime] with BaseTypedType[DateTime] =
-      MappedColumnType.base[DateTime, Timestamp](
-        dt => new Timestamp(dt.clicks),
-        ts => DateTime(ts.getTime)
-      )
+  class UsersTable(tag: Tag) extends Table[User](tag, "USERS") {
 
     def id = column[Int]("ID", O.PrimaryKey, O.AutoInc)
 
@@ -54,11 +48,7 @@ object DBSchema {
   }
 
   class VotesTable(tag: Tag) extends Table[Vote](tag, "VOTES"){
-    implicit val dateTimeColumnType: JdbcType[DateTime] with BaseTypedType[DateTime] =
-      MappedColumnType.base[DateTime, Timestamp](
-        dt => new Timestamp(dt.clicks),
-        ts => DateTime(ts.getTime)
-      )
+
     def id = column[Int]("ID", O.PrimaryKey, O.AutoInc)
     def userId = column[Int]("USER_ID")
     def linkId = column[Int]("LINK_ID")
@@ -68,7 +58,7 @@ object DBSchema {
   }
 
   val Links = TableQuery[LinksTable]
-  val Users = TableQuery[UserTable]
+  val Users = TableQuery[UsersTable]
   val Votes = TableQuery[VotesTable]
 
 
@@ -77,16 +67,17 @@ object DBSchema {
     */
   val databaseSetup = DBIO.seq(
     Links.schema.create,
-    Users.schema.create,
     Links forceInsertAll Seq(
       Link(1, "http://howtographql.com", "Awesome community driven GraphQL tutorial", DateTime(2017, 9, 12)),
       Link(2, "http://graphql.org", "Official GraphQL web page", DateTime(2017, 10, 1)),
       Link(3, "https://facebook.github.io/graphql/", "GraphQL specification", DateTime(2017, 10, 2))
     ),
+    Users.schema.create,
     Users forceInsertAll Seq(
       User(1, "mario", "mario@example.com", "s3cr3t"),
       User(2, "Fred", "fred@flinstones.com", "wilmalove")
     ),
+    Votes.schema.create,
     Votes forceInsertAll Seq(
       Vote(id = 1, userId = 1, linkId = 1),
       Vote(id = 2, userId = 1, linkId = 2),
