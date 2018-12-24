@@ -1,18 +1,18 @@
 package com.howtographql.scala.sangria
 
-import akka.http.scaladsl.server.Route
+import akka.http.scaladsl.server.{Route, _}
 import sangria.parser.QueryParser
 import spray.json.{JsObject, JsString, JsValue}
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.server.Directives._
+
 import scala.concurrent.ExecutionContext
 import scala.util.{Failure, Success}
-//import akka.http.scaladsl.server._
 import sangria.ast.Document
-import sangria.execution._
+import sangria.execution.{ExceptionHandler => EHandler, _}
 import akka.http.scaladsl.marshallers.sprayjson.SprayJsonSupport._
+import com.howtographql.scala.sangria.models.{AuthenticationException, AuthorizationException}
 import sangria.marshalling.sprayJson._
-
 
 object GraphQLServer {
   // 1. this is simply for our current project.
@@ -49,6 +49,11 @@ object GraphQLServer {
 
   }
 
+  val ErrorHandler = EHandler {
+    case (_, AuthenticationException(message)) ⇒ HandledException(message)
+    case (_, AuthorizationException(message)) ⇒ HandledException(message)
+  }
+
   private def executeGraphQLQuery(query: Document, operation: Option[String], vars: JsObject)(implicit ec: ExecutionContext) = {
     // 9
     Executor.execute(
@@ -57,7 +62,9 @@ object GraphQLServer {
       MyContext(dao), // only instance of our MyContext is here.
       variables = vars,
       operationName = operation,
-      deferredResolver = GraphQLSchema.Resolver
+      deferredResolver = GraphQLSchema.Resolver,
+      exceptionHandler = ErrorHandler,
+      middleware = AuthMiddleware :: Nil
     ).map(OK -> _)
       .recover {
         case error: QueryAnalysisError => BadRequest -> error.resolveError
