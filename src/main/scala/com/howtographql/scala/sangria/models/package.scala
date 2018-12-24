@@ -1,9 +1,8 @@
 package com.howtographql.scala.sangria
 
-import sangria.execution.deferred.HasId
 import akka.http.scaladsl.model.DateTime
+import sangria.execution.deferred.HasId
 import sangria.validation.Violation
-
 
 package object models {
 
@@ -24,5 +23,6 @@ package object models {
   case class User(id: Int, name: String, email: String, password: String, createdAt: DateTime = DateTime.now) extends Identifiable
 
   case class Vote(id: Int, userId: Int, linkId: Int, createdAt: DateTime = DateTime.now) extends Identifiable
+
 
 }
