@@ -71,7 +71,8 @@ object DBSchema {
 
     Users forceInsertAll Seq(
       User(1, "mario", "mario@example.com", "s3cr3t"),
-      User(2, "Fred", "fred@flinstones.com", "wilmalove")
+      User(2, "Fred", "fred@flinstones.com", "wilmalove"),
+      User(3, "8bitReid", "8bitreid@git.com", "password!")
     ),
 
     Links forceInsertAll Seq(
