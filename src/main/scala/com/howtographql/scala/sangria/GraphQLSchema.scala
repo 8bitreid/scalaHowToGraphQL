@@ -119,25 +119,33 @@ object GraphQLSchema {
   val QueryType = ObjectType(
     "Query", // Root object is our Query
     fields[MyContext, Unit](
-      Field("allLinks", ListType(LinkType), resolve = c => c.ctx.dao.allLinks),
+      Field(
+        "allLinks",
+        ListType(LinkType),
+//        tags = Authorized :: Nil,
+        resolve = c => c.ctx.dao.allLinks),
       Field("link",
         OptionType(LinkType),
         arguments = Id :: Nil,
+//        tags = Authorized :: Nil,
         resolve = c => linksFetcher.deferOpt(c.arg(Id))
       ),
       Field("links",
         ListType(LinkType),
         arguments = Ids :: Nil,
+//        tags = Authorized :: Nil,
         resolve = c => linksFetcher.deferSeq(c.arg(Ids))
       ),
       Field("users",
         ListType(UserType),
         arguments = List(Ids),
+//        tags = Authorized :: Nil,
         resolve = c => usersFetcher.deferSeq(c.arg(Ids))
       ),
       Field("votes",
         ListType(VoteType),
         arguments = List(Ids),
+//        tags = Authorized :: Nil,
         resolve = c => votesFetcher.deferSeq(c.arg(Ids))
       )
     )
@@ -160,6 +168,7 @@ object GraphQLSchema {
       Field("createUser",
         UserType,
         arguments = NameArg :: AuthProviderArg :: Nil,
+        tags = Authorized :: Nil,
         resolve = c => c.ctx.dao.createUser(c.arg(NameArg), c.arg(AuthProviderArg))
       ),
       Field("createLink",
@@ -170,6 +179,7 @@ object GraphQLSchema {
       Field("createVote",
         VoteType,
         arguments = LinkIdArg :: UserIdArg :: Nil,
+        tags = Authorized :: Nil,
         resolve = c => c.ctx.dao.createVote(c.arg(LinkIdArg), c.arg(UserIdArg))),
       Field("login",
         UserType,
