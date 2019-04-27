@@ -1,6 +1,10 @@
+# File created using '.gitignore Generator' for Visual Studio Code: https://bit.ly/vscode-gig
 
-# Created by https://www.gitignore.io/api/sbt,scala,intellij+iml
-# Edit at https://www.gitignore.io/?templates=sbt,scala,intellij+iml
+# Created by https://www.gitignore.io/api/intellij+iml,sbt,scala,bloop,metals
+# Edit at https://www.gitignore.io/?templates=intellij+iml,sbt,scala,bloop,metals
+
+### Bloop ###
+.bloop/
 
 ### Intellij+iml ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio and WebStorm
@@ -32,12 +36,11 @@
 # Gradle and Maven with auto-import
 # When using Gradle or Maven with auto-import, you should exclude module files,
 # since they will be recreated, and may cause churn.  Uncomment if using
-auto-import.
+# auto-import.
 .idea/modules.xml
 .idea/*.iml
 .idea/modules
-.idea
-
+.idea/
 # CMake
 cmake-build-*/
 
@@ -71,6 +74,9 @@ fabric.properties
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
 
+# JetBrains templates
+**___jb_tmp___
+
 ### Intellij+iml Patch ###
 # Reason: https://github.com/joeblau/gitignore.io/issues/186#issuecomment-249601023
 
@@ -78,6 +84,9 @@ fabric.properties
 modules.xml
 .idea/misc.xml
 *.ipr
+
+### Metals ###
+.metals/
 
 ### SBT ###
 # Simple Build Tool
@@ -97,7 +106,7 @@ project/plugins/project/
 *.class
 *.log
 
+# End of https://www.gitignore.io/api/intellij+iml,sbt,scala,bloop,metals
 
-.metals/
-.bloop/
-# End of https://www.gitignore.io/api/sbt,scala,intellij+iml
+# Custom rules (everything added below won't be overriden by 'Generate .gitignore File' if you use 'Update' option)
+
